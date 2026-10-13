@@ -1,0 +1,9 @@
+# Game files are never committed: everyone uses their own copy.
+*.apk
+*.obb
+*.xapk
+*.apks
+output/
+
+__pycache__/
+*.pyc
