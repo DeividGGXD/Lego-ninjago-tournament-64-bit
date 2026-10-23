@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Builds the two guest libraries into prebuilt/armeabi-v7a/.
+"""Builds the guest libraries into prebuilt/armeabi-v7a/ and the optional
+cheats variant of libGLESv2.so into prebuilt/armeabi-v7a-mods/.
 
 Needs the Android NDK (r25 or newer). It is found through ANDROID_NDK_HOME,
 ANDROID_NDK_ROOT or the newest ndk/ folder of the Android SDK
@@ -15,7 +16,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent
 SRC = ROOT / "src"
-OUT = ROOT / "prebuilt" / "armeabi-v7a"
+PREBUILT = ROOT / "prebuilt"
 
 # THUMB translates ARMv7 code; NEON is avoided on purpose (plain VFP is the
 # best-tested path) and so is the stack protector (one less import).
@@ -26,9 +27,11 @@ CFLAGS = [
     "-Wl,--no-undefined", "-Wl,-z,max-page-size=4096", "-Wl,--build-id=none",
 ]
 
+# (output folder, library, sources, link libraries)
 LIBS = [
-    ("libOpenSLES.so", ["slaudio.c"], ["-llog", "-lm"]),
-    ("libGLESv2.so", ["glfix.c"], ["-lGLESv2", "-lEGL", "-llog"]),
+    ("armeabi-v7a", "libOpenSLES.so", ["slaudio.c"], ["-llog", "-lm"]),
+    ("armeabi-v7a", "libGLESv2.so", ["glfix.c"], ["-lGLESv2", "-lEGL", "-llog"]),
+    ("armeabi-v7a-mods", "libGLESv2.so", ["glfix.c", "mods.c"], ["-lGLESv2", "-lEGL", "-llog", "-ldl"]),
 ]
 
 
@@ -65,11 +68,11 @@ def main():
     ndk = find_ndk()
     cc = clang(ndk)
     print(f"NDK: {ndk}")
-    OUT.mkdir(parents=True, exist_ok=True)
-    for name, sources, libs in LIBS:
-        out = OUT / name
+    for folder, name, sources, libs in LIBS:
+        out = PREBUILT / folder / name
+        out.parent.mkdir(parents=True, exist_ok=True)
         cmd = [str(cc), *CFLAGS, f"-Wl,-soname,{name}", "-o", str(out), *[str(SRC / s) for s in sources], *libs]
-        print(f"building {name}")
+        print(f"building {folder}/{name}")
         subprocess.run(cmd, check=True)
         print(f"  {out.relative_to(ROOT)} ({out.stat().st_size} bytes)")
 

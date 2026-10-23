@@ -9,8 +9,9 @@ Writes to ./output (change with --out):
   main.<version>.com.lego.ninjago.toe.obb
                                        the game data, fixed and named for the APK
 
-Either --apk or --obb can be given on its own. Only the Python standard
-library is needed (Python 3.8+).
+Either --apk or --obb can be given on its own. Add --mods for the optional
+cheats (infinite studs and tokens, everything unlocked; see README.md). Only
+the Python standard library is needed (Python 3.8+).
 """
 import argparse
 import pathlib
@@ -21,6 +22,7 @@ import zipfile
 
 ROOT = pathlib.Path(__file__).resolve().parent
 PREBUILT = ROOT / "prebuilt" / "armeabi-v7a"
+PREBUILT_MODS = ROOT / "prebuilt" / "armeabi-v7a-mods"  # replaces libraries of the same name
 GUEST_LIBS = ["libOpenSLES.so", "libGLESv2.so"]
 PACKAGE = "com.lego.ninjago.toe"
 GAME_LIB = "lib/armeabi-v7a/libLEGO_M1.so"
@@ -41,7 +43,7 @@ def obb_version_of(apk):
     return int(m.group(1)) if m else None
 
 
-def prepare_apk(src, out_dir):
+def prepare_apk(src, out_dir, mods):
     with zipfile.ZipFile(src) as apk:
         names = set(apk.namelist())
         if GAME_LIB not in names:
@@ -49,18 +51,18 @@ def prepare_apk(src, out_dir):
         if "lib/arm64-v8a/libthumb.so" in names:
             fail(f"{src.name} was already patched by THUMB: start from the original APK")
         version = obb_version_of(apk)
-        out = out_dir / "NinjagoTournament-THUMB-input.apk"
+        out = out_dir / ("NinjagoTournament-THUMB-input-mods.apk" if mods else "NinjagoTournament-THUMB-input.apk")
         with zipfile.ZipFile(out, "w") as dst:
             for info in apk.infolist():
                 if info.filename in (f"lib/armeabi-v7a/{lib}" for lib in GUEST_LIBS):
                     continue  # an older copy of ours
                 dst.writestr(info, apk.read(info.filename), compress_type=info.compress_type)
             for lib in GUEST_LIBS:
-                path = PREBUILT / lib
+                path = PREBUILT_MODS / lib if mods and (PREBUILT_MODS / lib).exists() else PREBUILT / lib
                 if not path.exists():
                     fail(f"{path} is missing: run build.py or download the release")
                 dst.write(path, f"lib/armeabi-v7a/{lib}", compress_type=zipfile.ZIP_DEFLATED)
-    print(f"APK: {out}")
+    print(f"APK: {out}" + (" (with mods)" if mods else ""))
     print(f"     looks for OBB version {version}" if version else "     (no obb_info.xml found)")
     return version
 
@@ -106,6 +108,7 @@ def main():
     ap.add_argument("--obb", type=pathlib.Path, help="the game's OBB data file")
     ap.add_argument("--version", type=int, help="OBB version to name the output for (default: from the APK)")
     ap.add_argument("--out", type=pathlib.Path, default=pathlib.Path("output"), help="output folder")
+    ap.add_argument("--mods", action="store_true", help="include the optional cheats")
     args = ap.parse_args()
     if not args.apk and not args.obb:
         ap.error("give --apk, --obb or both")
@@ -116,7 +119,7 @@ def main():
 
     version = args.version
     if args.apk:
-        apk_version = prepare_apk(args.apk, args.out)
+        apk_version = prepare_apk(args.apk, args.out, args.mods)
         version = version or apk_version
     if args.obb:
         prepare_obb(args.obb, args.out, version)

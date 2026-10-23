@@ -95,6 +95,25 @@ compression. Any of them should now work, except PowerVR:
 
 Once it works you can delete the copies in `Download`.
 
+## Optional: cheats
+
+Add `--mods` when preparing the APK:
+
+```
+python prepare.py --apk "path/to/your.apk" --obb "path/to/your.obb" --mods
+```
+
+This writes `NinjagoTournament-THUMB-input-mods.apk`, which you install the same way. It switches on
+the developer cheats TT left in the game, and keeps your money topped up:
+
+- studs and tokens stay at 10,000,000: whenever they drop below 5,000,000 they're refilled
+- every character, super move, level, extra and red brick unlocked
+- TT's "complete everything" runs once per launch, which marks all levels complete
+
+The last point changes your save for good, so keep a non-mods install if you want to play through
+normally. `mods.log` (next to the other logs) shows whether each cheat was found. Not tested on a
+phone yet.
+
 ## Troubleshooting
 
 | What you see | What to do |
@@ -146,6 +165,7 @@ Sources are in `src/`:
 |---|---|---|
 | `slaudio.c` | `libOpenSLES.so` | the OpenSL ES subset the game uses, mixed in software and played through `AudioTrack` |
 | `glfix.c` | `libGLESv2.so` | software decoding of ATC and DXT textures, plus shader and texture diagnostics |
+| `mods.c` | `libGLESv2.so` (mods variant only) | the optional cheats |
 | `dbglog.h` | | logging to logcat and to a file |
 | `minimp3.h` | | MP3 decoder ([lieff/minimp3](https://github.com/lieff/minimp3), CC0) |
 
